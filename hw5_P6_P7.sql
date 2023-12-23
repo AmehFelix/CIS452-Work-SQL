@@ -1,0 +1,45 @@
+DELIMITER ||
+
+CREATE TRIGGER trg_UpdateCustBalance AFTER INSERT ON INVOICE
+FOR EACH ROW
+BEGIN
+	UPDATE CUSTOMER SET CUST_BALANCE = (CUST_BALANCE + new.INV_AMOUNT) WHERE CUST_NUM = new.CUST_NUM;
+END;
+||
+DELIMITER ;
+SELECT * FROM CUSTOMER;
+
+INSERT INTO `INVOICE` (`INV_NUM`, `CUST_NUM`, `INV_DATE`, `INV_AMOUNT`) VALUES (8005, 1001, '2022-10-17', 224.40);
+
+DELIMITER ||
+
+CREATE PROCEDURE prc_new_invoice(
+IN invNum int,
+IN cusNum int,
+IN invAmount DECIMAL(10,2)
+)
+BEGIN
+	IF EXISTS (SELECT INV_NUM FROM INVOICE WHERE INV_NUM = invNum) THEN
+		SELECT 'The invoice number already exists, please use another invoice number';
+	ELSEIF NOT EXISTS (SELECT CUST_NUM FROM CUSTOMER WHERE CUST_NUM = cusNUM) THEN
+		SELECT 'The customer does not exist';
+	ELSEIF (SELECT CUST_BALANCE FROM CUSTOMER WHERE CUST_NUM = cusNUM) > 1000 THEN
+		SELECT 'Customer balance is higher than $1000, no new invoice can be added for this customer';
+	ELSE 
+		INSERT INTO `INVOICE` (`INV_NUM`, `CUST_NUM`, `INV_DATE`, `INV_AMOUNT`) VALUES (invNum, cusNum, SYSDATE(), invAmount);
+	END IF;
+END;
+||
+
+DELIMITER ;
+
+CALL prc_new_invoice(8000,1002,123.11);
+CALL prc_new_invoice(8006,1002,123.11);
+CALL prc_new_invoice(8006,1001,123.11);
+CALL prc_new_invoice(8006,1000,123.11); 
+
+SELECT * FROM CUSTOMER;
+SELECT * FROM INVOICE;
+
+DROP PROCEDURE prc_new_invoice;
+
